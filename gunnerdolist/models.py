@@ -13,7 +13,7 @@ class Task(models.Model):
     )
     name = models.CharField(max_length=200)
     notes = models.TextField(default="Tactics...", null=True, blank=True)
-    in_progress = models.IntegerField(choices=PROGRESS, default=1)
+    progress = models.IntegerField(choices=PROGRESS, default=1)
     importance = models.IntegerField(choices=STATUS, default=2)
     created_on = models.DateTimeField(auto_now_add=True)
     def __str__(self):
