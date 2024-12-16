@@ -1,82 +1,78 @@
 from django.shortcuts import render, redirect
-from django.views.generic.list import ListView
-from django.views.generic.detail import DetailView
-from django.views.generic.edit import CreateView, UpdateView, DeleteView
 from django.views import generic
-from .forms import TaskForm
-from .models import Task
-from django.urls import reverse_lazy
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import HttpResponse
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from .models import Task
+from .forms import TaskForm
+
+# Create your views here.
+
+@login_required
+def task_details(request):
+
+    tasks = Task.objects.filter(user=request.user)
+    
+    if request.method == 'POST':
+        form = TaskForm(request.POST)
+        if form.is_valid():
+            task = form.save(commit=False)
+            task.user = request.user
+            task.progress = 1
+            task.save()
+            return redirect('/')
+    form = TaskForm()
+
+    return render(request,
+                  'tasks/index.html', {'tasks': tasks, 'task_form': form, })
+
+def update_task(request, pk):
+
+    task = Task.objects.get(id=pk)
+    form = TaskForm(instance=task)
+
+    if request.method == 'POST':
+        form = TaskForm(request.POST, instance=task)
+        if form.is_valid():
+            task = form.save(commit=False)
+            task.user = request.user
+            task.save()
+            messages.add_message(request, messages.SUCCESS, 'Task Updated!')
+        else:
+            messages.add_message(request, messages.ERROR,
+                                 'Error updating comment!')
+        return redirect('/')
+
+    return render(request,
+                  'tasks/update_task.html',
+                  {'task_form': form, })
 
 
-class TaskList(LoginRequiredMixin, ListView):
+def delete_task(request, pk):
 
-    model = Task
-    context_object_name = 'tasks'
-    template_name = 'task_list.html'
+    task = Task.objects.get(id=pk)
 
-    def get_queryset(self):
-        return Task.objects.filter(user=self.request.user)
+    if request.method == 'POST':
+        form = TaskForm(request.POST, instance=task)
+        if task.user == request.user:
+            task.delete()
+            messages.add_message(request, messages.SUCCESS, 'Task deleted!')
+        else:
+            messages.add_message(request, messages.ERROR,
+                                 'You can only delete your own task!')
+        return redirect('/')
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['form'] = TaskForm()
-        return context
-
-
-class TaskCreateView(LoginRequiredMixin, CreateView):
-
-    model = Task
-    form_class = TaskForm
-    template_name = 'task_list.html'
-    success_url = reverse_lazy('task_list')
-
-    def TaskCreateView(request):
-        form = TaskForm()
-        context = {'form': form}
-        return render(request, 'task_list.html', context)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['form'] = TaskForm()
-        return render(request, 'task_list.html', context)
-
-    def form_valid(self, form):
-        form.instance.user = self.request.user
-        return super().form_valid(form)
+    return render(request,
+                  'tasks/delete_task.html',
+                  {'task': task, })
 
 
-        
-class TaskUpdate(LoginRequiredMixin, UpdateView):
-
-    model = Task
-    fields = ['name']
-    template_name = 'todo/task_update.html'
-    success_url = reverse_lazy('task_list')
-
-    def form_valid(self, form):
-        form.instance.user = self.request.user
-        response = super().form_valid(form)
-        messages.success(self.request, 'Task updated successfully!')
-        return response
-
-    def form_invalid(self, form):
-        messages.error(self.request,
-                       'Failed to update task. Please try again!')
-        return super().form_invalid(form)
-
-    def get_queryset(self):
-        return Task.objects.filter(user=self.request.user)
 
 
-class TaskDeleteView(LoginRequiredMixin, DeleteView):
 
-    model = Task
-    context_object_name = 'task'
-    template_name = 'todo/task_confirm_delete.html'
-    success_url = reverse_lazy('task_list')
 
-    def get_queryset(self):
-        return Task.objects.filter(user=self.request.user)
+
+
+
+
+
+
